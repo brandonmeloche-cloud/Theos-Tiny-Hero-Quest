@@ -6,127 +6,111 @@
   <title>Theo's Tiny Hero Quest</title>
   <style>
     :root {
-      --bg: #080d1c;
-      --panel: rgba(15, 22, 44, 0.82);
-      --panel-border: rgba(164, 208, 255, 0.34);
-      --gold: #f7d370;
-      --text: #ecf4ff;
-      --accent: #7bd8ff;
-      --soft: #b8d7ff;
+      --bg: #10131b;
+      --panel: #182034;
+      --gold: #ffd95a;
+      --text: #f5f7ff;
+      --accent: #7be0ff;
+      --danger: #ff6b6b;
+      --good: #8dff93;
     }
 
     * { box-sizing: border-box; }
 
-    html, body {
-      margin: 0;
-      min-height: 100%;
-      font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(1200px 600px at 10% 0%, #2a3b76 0%, transparent 60%),
-        radial-gradient(1000px 500px at 90% 10%, #2e1f58 0%, transparent 60%),
-        linear-gradient(160deg, #060a16, #0f1730 55%, #090f1f);
-    }
-
     body {
+      margin: 0;
+      font-family: "Trebuchet MS", "Comic Sans MS", system-ui, sans-serif;
+      background: radial-gradient(circle at top, #243154, #0c0f18 65%);
+      color: var(--text);
+      min-height: 100vh;
       display: grid;
       place-items: center;
       overflow: hidden;
-      padding: 10px;
     }
 
-    .shell {
-      width: min(100vw, 1080px);
+    .wrap {
+      width: min(100vw, 980px);
+      padding: 8px;
     }
 
     .title {
-      margin: 2px 0 8px;
       text-align: center;
-      letter-spacing: 0.06em;
+      margin: 0 0 8px;
       color: var(--gold);
-      font-size: clamp(1.2rem, 2.1vw, 2rem);
-      text-shadow: 0 3px 10px rgba(0,0,0,.5), 0 0 20px rgba(255,204,90,.25);
+      font-size: clamp(1.2rem, 2.4vw, 2rem);
+      text-shadow: 0 2px 8px rgba(0,0,0,.45);
     }
 
-    .frame {
-      border: 2px solid #395288;
-      border-radius: 14px;
+    .game-shell {
+      border: 4px solid #32456f;
+      border-radius: 12px;
+      background: #0b1220;
+      box-shadow: 0 10px 30px rgba(0,0,0,.45);
       overflow: hidden;
-      box-shadow: 0 14px 44px rgba(0,0,0,.55), inset 0 0 0 2px rgba(140,196,255,.14);
-      background: #070b14;
     }
 
     canvas {
       display: block;
       width: 100%;
       height: auto;
-      aspect-ratio: 960 / 540;
-      background: #0a1122;
+      aspect-ratio: 900 / 500;
+      background: #1a2238;
     }
 
-    .help {
-      margin-top: 8px;
+    .controls-hint {
+      margin-top: 10px;
       text-align: center;
-      color: #d6e8ff;
-      font-size: .9rem;
-      opacity: .92;
       line-height: 1.35;
+      color: #e4ebff;
+      font-size: .93rem;
+      opacity: .92;
     }
 
-    .help b { color: var(--accent); }
+    .controls-hint strong { color: var(--accent); }
   </style>
 </head>
 <body>
-  <main class="shell">
+  <div class="wrap">
     <h1 class="title">Theo's Tiny Hero Quest</h1>
-    <div class="frame">
-      <canvas id="game" width="960" height="540" aria-label="Theo's Tiny Hero Quest Canvas"></canvas>
+    <div class="game-shell">
+      <canvas id="game" width="900" height="500" aria-label="Theo's Tiny Hero Quest game canvas"></canvas>
     </div>
-    <p class="help">
-      <b>Move</b> Arrow keys / A,D • <b>Jump</b> Space / W / Up • <b>Sword</b> Z •
-      <b>Arrow</b> X • <b>Bullet</b> C • <b>Pause</b> P • <b>Restart Level</b> R • <b>Sound</b> M
-    </p>
-  </main>
+    <div class="controls-hint">
+      <strong>Move:</strong> Arrow keys / A,D |
+      <strong>Jump:</strong> Space / W / Up |
+      <strong>Sword:</strong> Z |
+      <strong>Arrow:</strong> X |
+      <strong>Bullet:</strong> C |
+      <strong>Pause:</strong> P |
+      <strong>Restart level:</strong> R |
+      <strong>Sound:</strong> M
+    </div>
+  </div>
 
 <script>
 (() => {
   "use strict";
 
-  // ================================================================
-  // Theo's Tiny Hero Quest - Deluxe Single-File Edition
-  // Built with pure canvas + JS, no external assets.
-  // ================================================================
+  // ============================================================
+  // Theo's Tiny Hero Quest
+  // Single-file canvas game. No external assets required.
+  // ============================================================
 
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
 
-  const W = canvas.width;
-  const H = canvas.height;
-  const G = 1900;
+  const GAME_W = canvas.width;
+  const GAME_H = canvas.height;
+  const GRAVITY = 1700;
 
   const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
   const rand = (a, b) => a + Math.random() * (b - a);
-  const lerp = (a, b, t) => a + (b - a) * t;
 
   function aabb(a, b) {
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   }
 
-  function roundedRect(x, y, w, h, r = 10) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
-  }
-
-  class AudioEngine {
+  class AudioManager {
     constructor() {
       this.enabled = true;
       this.ctx = null;
@@ -135,15 +119,15 @@
     ensure() {
       if (!this.enabled) return false;
       if (!this.ctx) {
-        const Ctx = window.AudioContext || window.webkitAudioContext;
-        if (!Ctx) return false;
-        this.ctx = new Ctx();
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return false;
+        this.ctx = new AC();
       }
       if (this.ctx.state === "suspended") this.ctx.resume();
       return true;
     }
 
-    tone(freq = 440, t = 0.09, type = "sine", vol = 0.055, slide = null) {
+    beep(type = "sine", freq = 440, duration = 0.08, volume = 0.05) {
       try {
         if (!this.ensure()) return;
         const now = this.ctx.currentTime;
@@ -151,40 +135,34 @@
         const gain = this.ctx.createGain();
         osc.type = type;
         osc.frequency.setValueAtTime(freq, now);
-        if (slide) osc.frequency.exponentialRampToValueAtTime(slide, now + t);
-        gain.gain.setValueAtTime(vol, now);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + t);
+        gain.gain.setValueAtTime(volume, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
         osc.connect(gain).connect(this.ctx.destination);
         osc.start(now);
-        osc.stop(now + t);
+        osc.stop(now + duration);
       } catch (_) {
-        // If audio fails, gameplay continues.
+        // Keep gameplay running even if sound fails.
       }
     }
 
-    jump() { this.tone(560, 0.07, "triangle", 0.05, 760); }
-    hit() { this.tone(150, 0.12, "sawtooth", 0.08); }
-    coin() { this.tone(980, 0.08, "square", 0.065, 1250); }
-    sword() { this.tone(280, 0.06, "triangle", 0.06, 180); }
-    shootA() { this.tone(720, 0.05, "square", 0.05, 520); }
-    shootB() { this.tone(820, 0.05, "sine", 0.05, 610); }
-    slam() { this.tone(96, 0.18, "sawtooth", 0.09); }
-    win() {
-      [523, 659, 784, 1046].forEach((n, i) => setTimeout(() => this.tone(n, 0.17, "triangle", 0.06), i * 120));
+    jump() { this.beep("triangle", 520, 0.07, 0.04); }
+    hit() { this.beep("sawtooth", 180, 0.12, 0.07); }
+    coin() { this.beep("square", 900, 0.08, 0.06); }
+    shoot() { this.beep("square", 700, 0.05, 0.04); }
+    sword() { this.beep("triangle", 320, 0.06, 0.05); }
+    slam() { this.beep("sawtooth", 90, 0.18, 0.08); }
+    fanfare() {
+      const notes = [523, 659, 784, 1046];
+      notes.forEach((n, i) => setTimeout(() => this.beep("triangle", n, 0.2, 0.05), i * 140));
     }
-    toggle() { this.enabled = !this.enabled; }
+
+    toggle() {
+      this.enabled = !this.enabled;
+    }
   }
 
   class Particle {
-    constructor(x, y, {
-      color = "#fff",
-      life = 0.6,
-      vx = rand(-120, 120),
-      vy = rand(-200, -40),
-      size = rand(2, 5),
-      gravity = 700,
-      glow = 0
-    } = {}) {
+    constructor(x, y, color, life = 0.5, vx = rand(-90, 90), vy = rand(-160, -20), size = rand(2, 5)) {
       this.x = x;
       this.y = y;
       this.vx = vx;
@@ -192,57 +170,42 @@
       this.size = size;
       this.color = color;
       this.life = life;
-      this.max = life;
-      this.gravity = gravity;
-      this.glow = glow;
+      this.maxLife = life;
     }
 
     update(dt) {
       this.life -= dt;
-      this.vy += this.gravity * dt;
+      this.vy += 600 * dt;
       this.x += this.vx * dt;
       this.y += this.vy * dt;
     }
 
-    draw(camX = 0) {
+    draw(ctx, cameraX = 0) {
       if (this.life <= 0) return;
-      const alpha = clamp(this.life / this.max, 0, 1);
-      ctx.globalAlpha = alpha;
-      if (this.glow > 0) {
-        ctx.shadowColor = this.color;
-        ctx.shadowBlur = this.glow;
-      }
+      ctx.globalAlpha = clamp(this.life / this.maxLife, 0, 1);
       ctx.fillStyle = this.color;
       ctx.beginPath();
-      ctx.arc(this.x - camX, this.y, this.size, 0, Math.PI * 2);
+      ctx.arc(this.x - cameraX, this.y, this.size, 0, Math.PI * 2);
       ctx.fill();
-      ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
     }
   }
 
   class Projectile {
-    constructor(x, y, dir, type = "arrow", owner = "player") {
-      this.type = type;
+    constructor(x, y, dir, kind = "arrow", owner = "player") {
+      this.kind = kind;
       this.owner = owner;
       this.x = x;
       this.y = y;
-      this.w = type === "arrow" ? 20 : type === "bullet" ? 12 : 14;
-      this.h = type === "arrow" ? 5 : 6;
+      this.w = kind === "arrow" ? 18 : 10;
+      this.h = kind === "arrow" ? 5 : 5;
+      const speed = kind === "arrow" ? 480 : 720;
+      this.vx = dir * speed;
+      this.vy = kind === "goober" ? -200 : 0;
+      this.gravity = kind === "goober" ? 500 : 0;
       this.damage = 1;
-      this.life = type === "goober" ? 3.3 : 1.6;
-      this.gravity = type === "goober" ? 620 : 0;
-
-      if (type === "arrow") {
-        this.vx = dir * 500;
-        this.vy = -10;
-      } else if (type === "bullet") {
-        this.vx = dir * 760;
-        this.vy = 0;
-      } else {
-        this.vx = dir * 180;
-        this.vy = -270;
-      }
+      this.life = kind === "goober" ? 3.2 : 1.5;
+      this.color = kind === "arrow" ? "#d3b36f" : kind === "bullet" ? "#89e7ff" : "#98e57f";
     }
 
     update(dt) {
@@ -252,123 +215,95 @@
       this.y += this.vy * dt;
     }
 
-    draw(camX = 0) {
-      if (this.type === "arrow") {
-        ctx.shadowColor = "#ffe3aa";
-        ctx.shadowBlur = 7;
-        ctx.fillStyle = "#d9ba6f";
-        ctx.fillRect(this.x - camX, this.y, this.w, this.h);
-        ctx.fillStyle = "#f5e4be";
+    draw(ctx, cameraX = 0) {
+      ctx.shadowColor = this.color;
+      ctx.shadowBlur = this.kind === "bullet" ? 12 : 6;
+      ctx.fillStyle = this.color;
+      ctx.fillRect(this.x - cameraX, this.y, this.w, this.h);
+      ctx.shadowBlur = 0;
+      if (this.kind === "arrow") {
+        ctx.fillStyle = "#f4de9a";
         ctx.beginPath();
-        ctx.moveTo(this.x + this.w - camX, this.y + this.h / 2);
-        ctx.lineTo(this.x + this.w + 7 - camX, this.y - 2);
-        ctx.lineTo(this.x + this.w + 7 - camX, this.y + this.h + 2);
+        ctx.moveTo(this.x + this.w - cameraX, this.y + this.h / 2);
+        ctx.lineTo(this.x + this.w + 6 - cameraX, this.y - 2);
+        ctx.lineTo(this.x + this.w + 6 - cameraX, this.y + this.h + 2);
         ctx.closePath();
         ctx.fill();
-      } else if (this.type === "bullet") {
-        ctx.shadowColor = "#87ebff";
-        ctx.shadowBlur = 14;
-        const g = ctx.createLinearGradient(this.x - camX, this.y, this.x - camX + this.w, this.y);
-        g.addColorStop(0, "#88f5ff");
-        g.addColorStop(1, "#5eb2ff");
-        ctx.fillStyle = g;
-        roundedRect(this.x - camX, this.y, this.w, this.h, 3);
-        ctx.fill();
-      } else {
-        ctx.shadowColor = "#7fff84";
-        ctx.shadowBlur = 10;
-        ctx.fillStyle = "#66ef5c";
-        ctx.beginPath();
-        ctx.ellipse(this.x - camX + this.w / 2, this.y + this.h / 2, this.w / 2, this.h / 2, 0, 0, Math.PI * 2);
-        ctx.fill();
       }
-      ctx.shadowBlur = 0;
     }
   }
 
   class Enemy {
-    constructor(type, x, y, minX, maxX) {
+    constructor(type, x, y, patrolMin, patrolMax) {
       this.type = type;
       this.x = x;
       this.y = y;
-      this.w = 36;
-      this.h = 28;
-      this.vx = 0;
+      this.w = 34;
+      this.h = 26;
+      this.vx = type === "green" ? 70 : 140;
       this.vy = 0;
       this.dir = Math.random() > 0.5 ? 1 : -1;
-      this.baseSpeed = type === "green" ? 72 : 148;
       this.hp = type === "green" ? 1 : 2;
-      this.minX = minX;
-      this.maxX = maxX;
+      this.maxHp = this.hp;
+      this.patrolMin = patrolMin;
+      this.patrolMax = patrolMax;
+      this.damage = 1;
       this.alive = true;
-      this.squish = 0;
     }
 
-    update(dt, game) {
+    update(dt, level, player) {
       if (!this.alive) return;
-
       if (this.type === "purple") {
-        const dx = game.player.x - this.x;
-        if (Math.abs(dx) < 250) this.dir = dx > 0 ? 1 : -1;
+        const dx = player.x - this.x;
+        if (Math.abs(dx) < 220) this.dir = dx >= 0 ? 1 : -1;
       }
 
-      this.vx = this.baseSpeed * this.dir;
+      this.vx = (this.type === "green" ? 70 : 140) * this.dir;
       this.x += this.vx * dt;
-      if (this.x < this.minX) { this.x = this.minX; this.dir = 1; }
-      if (this.x + this.w > this.maxX) { this.x = this.maxX - this.w; this.dir = -1; }
 
-      this.vy += G * dt;
+      if (this.x < this.patrolMin) { this.x = this.patrolMin; this.dir = 1; }
+      if (this.x + this.w > this.patrolMax) { this.x = this.patrolMax - this.w; this.dir = -1; }
+
+      this.vy += GRAVITY * dt;
       this.y += this.vy * dt;
 
-      for (const p of game.level.platforms) {
+      const cols = level.platforms;
+      for (const p of cols) {
         if (aabb(this, p) && this.vy >= 0) {
           this.y = p.y - this.h;
           this.vy = 0;
         }
       }
-
-      this.squish = Math.max(0, this.squish - dt * 8);
     }
 
-    hurt(game, dmg = 1) {
-      this.hp -= dmg;
-      this.squish = 0.8;
-      const color = this.type === "green" ? "#8aff66" : "#d498ff";
-      for (let i = 0; i < 12; i++) game.particles.push(new Particle(this.x + this.w * 0.5, this.y + this.h * 0.45, { color, glow: 8 }));
+    hurt(game, damage = 1) {
+      this.hp -= damage;
+      for (let i = 0; i < 6; i++) game.particles.push(new Particle(this.x + this.w / 2, this.y + this.h / 2, this.type === "green" ? "#86f56a" : "#c68cff"));
       if (this.hp <= 0) {
         this.alive = false;
-        for (let i = 0; i < 18; i++) game.particles.push(new Particle(this.x + this.w * 0.5, this.y + this.h * 0.5, { color: "#ffffff", glow: 10, size: rand(2, 6) }));
+        for (let i = 0; i < 12; i++) game.particles.push(new Particle(this.x + this.w / 2, this.y + this.h / 2, "#ffffff", 0.6));
       }
     }
 
-    draw(camX = 0) {
+    draw(ctx, cameraX) {
       if (!this.alive) return;
-      const scaleY = 1 - this.squish * 0.2;
-      const yAdj = this.h * (1 - scaleY);
-      const bodyColor = this.type === "green" ? "#63ea51" : "#bf76ff";
-      const glow = this.type === "green" ? "rgba(121,255,119,.58)" : "rgba(210,133,255,.58)";
-
-      ctx.save();
-      ctx.translate(this.x + this.w * 0.5 - camX, this.y + this.h * 0.5 + yAdj / 2);
-      ctx.scale(1, scaleY);
-
-      ctx.shadowColor = glow;
-      ctx.shadowBlur = 15;
-      const g = ctx.createRadialGradient(0, -5, 2, 0, 0, this.w * 0.6);
-      g.addColorStop(0, "#ffffff55");
-      g.addColorStop(1, bodyColor);
-      ctx.fillStyle = g;
+      const color = this.type === "green" ? "#76ff5d" : "#cf7cff";
+      const shadow = this.type === "green" ? "rgba(90,255,90,.65)" : "rgba(190,120,255,.65)";
+      ctx.shadowColor = shadow;
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.ellipse(0, 0, this.w * 0.5, this.h * 0.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(this.x + this.w / 2 - cameraX, this.y + this.h / 2 + 3, this.w / 2, this.h / 2, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
 
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(-10, -6, 5, 5);
-      ctx.fillRect(5, -6, 5, 5);
-      ctx.fillStyle = "#1a0d27";
-      ctx.fillRect(-8, 2, 16, 3);
-      ctx.restore();
+      ctx.fillStyle = "rgba(255,255,255,.28)";
+      ctx.beginPath();
+      ctx.ellipse(this.x + this.w / 2 - cameraX - 6, this.y + 9, 8, 4, -0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(this.x + 8 - cameraX, this.y + 8, 4, 4);
+      ctx.fillRect(this.x + 21 - cameraX, this.y + 8, 4, 4);
     }
   }
 
@@ -376,168 +311,153 @@
     constructor(x, y) {
       this.x = x;
       this.y = y;
-      this.w = 132;
-      this.h = 92;
-      this.vx = -90;
+      this.w = 120;
+      this.h = 86;
+      this.vx = -80;
       this.vy = 0;
       this.hp = 12;
       this.maxHp = 12;
-      this.attackTimer = 1;
-      this.spitTimer = 0;
+      this.grounded = false;
+      this.attackTimer = 0;
+      this.pattern = "hop";
       this.jumpCount = 0;
+      this.spitCooldown = 0;
       this.alive = true;
-      this.onGround = false;
-      this.slamJustLanded = false;
     }
 
     update(dt, game) {
       if (!this.alive) return;
-
       const phase2 = this.hp <= 6;
-      const arenaMin = game.level.bounds.minX + 80;
-      const arenaMax = game.level.bounds.maxX - 80;
+      const arenaMin = game.level.bounds.minX + 120;
+      const arenaMax = game.level.bounds.maxX - 120;
 
       this.attackTimer -= dt;
-      this.spitTimer -= dt;
-      this.slamJustLanded = false;
+      this.spitCooldown -= dt;
 
-      this.vy += G * 0.93 * dt;
+      this.vy += GRAVITY * 0.9 * dt;
       this.x += this.vx * dt;
       this.y += this.vy * dt;
 
       if (this.x < arenaMin) { this.x = arenaMin; this.vx = Math.abs(this.vx); }
       if (this.x + this.w > arenaMax) { this.x = arenaMax - this.w; this.vx = -Math.abs(this.vx); }
 
-      this.onGround = false;
+      this.grounded = false;
       for (const p of game.level.platforms) {
         if (aabb(this, p) && this.vy >= 0) {
-          if (!this.onGround && this.vy > 120) this.slamJustLanded = true;
-          this.onGround = true;
           this.y = p.y - this.h;
           this.vy = 0;
+          this.grounded = true;
         }
       }
 
-      if (this.slamJustLanded) {
-        game.spawnShockwaves(this.x + this.w / 2, this.y + this.h - 10);
-        game.screenShake = Math.max(game.screenShake, 11);
-        game.audio.slam();
-      }
-
-      if (this.onGround && this.attackTimer <= 0) {
-        const hop = Math.random() < 0.58;
-        if (hop) {
-          this.vy = phase2 ? -820 : -690;
-          this.vx = (Math.random() > 0.5 ? 1 : -1) * (phase2 ? 235 : 170);
-          this.attackTimer = phase2 ? 0.72 : 1.02;
+      if (this.grounded && this.attackTimer <= 0) {
+        this.pattern = Math.random() < 0.55 ? "hop" : "spit";
+        if (this.pattern === "hop") {
+          this.vy = phase2 ? -760 : -650;
+          this.vx = (Math.random() > 0.5 ? 1 : -1) * (phase2 ? 220 : 160);
+          this.attackTimer = phase2 ? 0.75 : 1.0;
           this.jumpCount++;
+
           if (phase2 && this.jumpCount % 4 === 0) {
-            this.vy = -900;
+            // Occasional double hop in phase 2.
+            this.vy = -820;
             this.attackTimer = 0.55;
           }
         } else {
-          this.attackTimer = phase2 ? 0.84 : 1.23;
-          if (this.spitTimer <= 0) {
-            const n = phase2 ? 3 : 2;
-            for (let i = 0; i < n; i++) {
-              const p = new Projectile(this.x + this.w / 2, this.y + 18, i % 2 === 0 ? -1 : 1, "goober", "enemy");
-              p.vx = (i - (n - 1) / 2) * 160;
-              p.vy = -310 - i * 50;
+          this.attackTimer = phase2 ? 0.9 : 1.3;
+          if (this.spitCooldown <= 0) {
+            const blobs = phase2 ? 3 : 2;
+            for (let i = 0; i < blobs; i++) {
+              const p = new Projectile(this.x + this.w / 2, this.y + 20, i % 2 === 0 ? -1 : 1, "goober", "enemy");
+              p.vx = (i - (blobs - 1) / 2) * 140;
+              p.vy = -260 - i * 40;
+              p.w = p.h = 12;
               game.enemyProjectiles.push(p);
             }
-            this.spitTimer = phase2 ? 1.35 : 2.0;
+            this.spitCooldown = phase2 ? 1.5 : 2.2;
           }
         }
       }
+
+      if (this.grounded && Math.abs(this.vy) < 2 && Math.abs(this.vx) > 120) {
+        game.spawnShockwaves(this.x + this.w / 2, this.y + this.h - 4);
+        game.audio.slam();
+        game.shake = Math.max(game.shake, 8);
+      }
     }
 
-    hurt(game, dmg = 1) {
-      this.hp -= dmg;
-      for (let i = 0; i < 16; i++) game.particles.push(new Particle(this.x + this.w * 0.5, this.y + this.h * 0.45, {
-        color: "#ffb6ee",
-        size: rand(3, 6),
-        glow: 12,
-        life: 0.9
-      }));
-      if (this.hp <= 0) this.alive = false;
+    hurt(game, damage = 1) {
+      this.hp -= damage;
+      for (let i = 0; i < 10; i++) game.particles.push(new Particle(this.x + this.w / 2, this.y + this.h / 2, "#ffb3f0", 0.8));
+      if (this.hp <= 0) {
+        this.alive = false;
+      }
     }
 
-    draw(camX = 0) {
+    draw(ctx, cameraX) {
       if (!this.alive) return;
-      ctx.shadowColor = "rgba(255,125,230,.6)";
-      ctx.shadowBlur = 24;
-      const g = ctx.createLinearGradient(this.x - camX, this.y, this.x - camX, this.y + this.h);
-      g.addColorStop(0, "#ffa7ef");
-      g.addColorStop(1, "#f758b4");
+      ctx.shadowColor = "rgba(255, 116, 210, 0.65)";
+      ctx.shadowBlur = 18;
+      const g = ctx.createLinearGradient(this.x - cameraX, this.y, this.x - cameraX, this.y + this.h);
+      g.addColorStop(0, "#ffacf0");
+      g.addColorStop(1, "#ff52bf");
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.ellipse(this.x + this.w / 2 - camX, this.y + this.h / 2 + 8, this.w / 2, this.h / 2, 0, 0, Math.PI * 2);
+      ctx.ellipse(this.x + this.w / 2 - cameraX, this.y + this.h / 2 + 6, this.w / 2, this.h / 2, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
 
       ctx.fillStyle = "rgba(255,255,255,.25)";
       ctx.beginPath();
-      ctx.ellipse(this.x + 40 - camX, this.y + 28, 22, 11, -0.5, 0, Math.PI * 2);
+      ctx.ellipse(this.x + this.w / 2 - cameraX - 16, this.y + 24, 18, 10, -0.5, 0, Math.PI * 2);
       ctx.fill();
-
       ctx.fillStyle = "#fff";
-      ctx.fillRect(this.x + 33 - camX, this.y + 26, 9, 9);
-      ctx.fillRect(this.x + 88 - camX, this.y + 26, 9, 9);
-      ctx.fillStyle = "#2b1035";
-      ctx.fillRect(this.x + 48 - camX, this.y + 58, 36, 6);
-
-      // Crown
-      ctx.fillStyle = "#ffdb62";
-      ctx.beginPath();
-      ctx.moveTo(this.x + this.w / 2 - 20 - camX, this.y + 8);
-      ctx.lineTo(this.x + this.w / 2 - 10 - camX, this.y - 8);
-      ctx.lineTo(this.x + this.w / 2 - camX, this.y + 8);
-      ctx.lineTo(this.x + this.w / 2 + 10 - camX, this.y - 8);
-      ctx.lineTo(this.x + this.w / 2 + 20 - camX, this.y + 8);
-      ctx.closePath();
-      ctx.fill();
+      ctx.fillRect(this.x + 28 - cameraX, this.y + 24, 8, 8);
+      ctx.fillRect(this.x + 78 - cameraX, this.y + 24, 8, 8);
+      ctx.fillStyle = "#4a235f";
+      ctx.fillRect(this.x + 38 - cameraX, this.y + 54, 42, 5);
     }
   }
 
   class Player {
     constructor(x, y) {
-      this.w = 36;
-      this.h = 46;
+      this.x = x;
+      this.y = y;
+      this.w = 30;
+      this.h = 42;
+      this.vx = 0;
+      this.vy = 0;
+      this.speed = 260;
+      this.jumpPower = 620;
+      this.dir = 1;
+      this.onGround = false;
+
       this.maxHearts = 3;
-      this.resetAll(x, y);
+      this.hearts = 3;
+      this.invuln = 0;
+
+      this.swordCooldown = 0;
+      this.arrowCooldown = 0;
+      this.bulletCooldown = 0;
+      this.swordActive = 0;
+      this.swordRect = null;
     }
 
-    resetAll(x, y) {
+    reset(x, y) {
       this.x = x;
       this.y = y;
       this.vx = 0;
       this.vy = 0;
-      this.dir = 1;
-      this.speed = 280;
-      this.jump = 690;
-      this.onGround = false;
-      this.hearts = this.maxHearts;
-      this.invuln = 0;
-      this.swordCd = 0;
-      this.arrowCd = 0;
-      this.bulletCd = 0;
-      this.swingTimer = 0;
-      this.swordBox = null;
-    }
-
-    resetPos(x, y) {
-      this.x = x; this.y = y;
-      this.vx = 0; this.vy = 0;
       this.onGround = false;
       this.invuln = 0;
-      this.swordCd = this.arrowCd = this.bulletCd = 0;
-      this.swingTimer = 0;
-      this.swordBox = null;
+      this.swordCooldown = this.arrowCooldown = this.bulletCooldown = 0;
+      this.swordActive = 0;
+      this.swordRect = null;
     }
 
     update(dt, game) {
-      const left = game.keyDown("ArrowLeft") || game.keyDown("a") || game.keyDown("A");
-      const right = game.keyDown("ArrowRight") || game.keyDown("d") || game.keyDown("D");
+      const left = game.keys["ArrowLeft"] || game.keys["a"] || game.keys["A"];
+      const right = game.keys["ArrowRight"] || game.keys["d"] || game.keys["D"];
 
       this.vx = 0;
       if (left) { this.vx = -this.speed; this.dir = -1; }
@@ -545,34 +465,45 @@
 
       if (game.justPressed(" ") || game.justPressed("w") || game.justPressed("W") || game.justPressed("ArrowUp")) {
         if (this.onGround) {
-          this.vy = -this.jump;
+          this.vy = -this.jumpPower;
           this.onGround = false;
           game.audio.jump();
-          for (let i = 0; i < 4; i++) game.particles.push(new Particle(this.x + this.w / 2, this.y + this.h, { color: "#dce6ff", vy: rand(-60, -20), vx: rand(-60, 60), life: 0.28, size: rand(1.6, 3), gravity: 250 }));
         }
       }
 
-      if ((game.justPressed("z") || game.justPressed("Z")) && this.swordCd <= 0) {
-        this.swordCd = 0.25;
-        this.swingTimer = 0.12;
-        this.swordBox = { x: this.dir > 0 ? this.x + this.w : this.x - 34, y: this.y + 10, w: 34, h: 24 };
-        game.audio.sword();
+      if (game.justPressed("z") || game.justPressed("Z")) {
+        if (this.swordCooldown <= 0) {
+          this.swordCooldown = 0.25;
+          this.swordActive = 0.12;
+          this.swordRect = {
+            x: this.dir > 0 ? this.x + this.w : this.x - 30,
+            y: this.y + 8,
+            w: 30,
+            h: 24
+          };
+          game.audio.sword();
+        }
       }
 
-      if ((game.justPressed("x") || game.justPressed("X")) && this.arrowCd <= 0) {
-        this.arrowCd = 0.3;
-        game.projectiles.push(new Projectile(this.x + this.w * 0.55, this.y + 20, this.dir, "arrow", "player"));
-        game.audio.shootA();
+      if (game.justPressed("x") || game.justPressed("X")) {
+        if (this.arrowCooldown <= 0) {
+          this.arrowCooldown = 0.3;
+          game.projectiles.push(new Projectile(this.x + this.w / 2, this.y + 18, this.dir, "arrow", "player"));
+          game.audio.shoot();
+        }
       }
 
-      if ((game.justPressed("c") || game.justPressed("C")) && this.bulletCd <= 0) {
-        this.bulletCd = 0.45;
-        game.projectiles.push(new Projectile(this.x + this.w * 0.55, this.y + 22, this.dir, "bullet", "player"));
-        game.audio.shootB();
+      if (game.justPressed("c") || game.justPressed("C")) {
+        if (this.bulletCooldown <= 0) {
+          this.bulletCooldown = 0.45;
+          game.projectiles.push(new Projectile(this.x + this.w / 2, this.y + 20, this.dir, "bullet", "player"));
+          game.audio.shoot();
+        }
       }
 
-      this.vy += G * dt;
+      this.vy += GRAVITY * dt;
       this.x += this.vx * dt;
+
       for (const p of game.level.platforms) {
         if (aabb(this, p)) {
           if (this.vx > 0) this.x = p.x - this.w;
@@ -596,229 +527,200 @@
       }
 
       this.x = clamp(this.x, game.level.bounds.minX, game.level.bounds.maxX - this.w);
-      if (this.y > H + 200) this.hearts = 0;
 
+      if (this.y > GAME_H + 120) {
+        this.hearts = 0;
+      }
+
+      this.swordCooldown -= dt;
+      this.arrowCooldown -= dt;
+      this.bulletCooldown -= dt;
       this.invuln -= dt;
-      this.swordCd -= dt;
-      this.arrowCd -= dt;
-      this.bulletCd -= dt;
-      this.swingTimer -= dt;
-      if (this.swingTimer > 0 && this.swordBox) {
-        this.swordBox.x = this.dir > 0 ? this.x + this.w : this.x - this.swordBox.w;
-        this.swordBox.y = this.y + 10;
+      this.swordActive -= dt;
+
+      if (this.swordActive > 0) {
+        this.swordRect.x = this.dir > 0 ? this.x + this.w : this.x - this.swordRect.w;
+        this.swordRect.y = this.y + 8;
       } else {
-        this.swordBox = null;
+        this.swordRect = null;
       }
     }
 
     takeDamage(fromX, game) {
       if (this.invuln > 0) return;
-      this.hearts--;
+      this.hearts -= 1;
       this.invuln = 1.0;
-      this.vx = fromX < this.x ? 330 : -330;
-      this.vy = -320;
-      game.screenShake = Math.max(game.screenShake, 8);
+      this.vx = fromX < this.x ? 280 : -280;
+      this.vy = -280;
+      game.shake = Math.max(game.shake, 8);
       game.audio.hit();
-      for (let i = 0; i < 14; i++) game.particles.push(new Particle(this.x + this.w * 0.5, this.y + this.h * 0.45, { color: "#ff8c8c", glow: 9 }));
+      for (let i = 0; i < 10; i++) game.particles.push(new Particle(this.x + this.w / 2, this.y + this.h / 2, "#ff7b7b", 0.45));
     }
 
-    draw(camX = 0) {
-      if (this.invuln > 0 && Math.floor(this.invuln * 15) % 2 === 0) return;
-      const px = this.x - camX;
-      const py = this.y;
+    draw(ctx, cameraX) {
+      if (this.invuln > 0 && Math.floor(this.invuln * 12) % 2 === 0) return;
 
-      // shadow
-      ctx.fillStyle = "rgba(0,0,0,.25)";
+      // Theo body (more painterly heroic palette)
+      const bodyG = ctx.createLinearGradient(this.x - cameraX, this.y + 12, this.x - cameraX, this.y + 34);
+      bodyG.addColorStop(0, "#3aa4ff");
+      bodyG.addColorStop(1, "#2b6bdb");
+      ctx.fillStyle = bodyG;
+      ctx.fillRect(this.x - cameraX + 8, this.y + 12, 14, 22);
+      // Theo head
+      ctx.fillStyle = "#ffd7b3";
+      ctx.fillRect(this.x - cameraX + 7, this.y + 1, 16, 14);
+      ctx.fillStyle = "#6f4326";
+      ctx.fillRect(this.x - cameraX + 7, this.y + 1, 16, 4);
+      // Shield
+      ctx.fillStyle = "#326fdb";
       ctx.beginPath();
-      ctx.ellipse(px + this.w * 0.48, py + this.h + 4, 15, 4, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // cape
-      ctx.fillStyle = "#d9435f";
-      ctx.fillRect(px + (this.dir > 0 ? 2 : 26), py + 14, 8, 22);
-
-      // body
-      const body = ctx.createLinearGradient(px + 8, py + 11, px + 8, py + 40);
-      body.addColorStop(0, "#4cb8ff");
-      body.addColorStop(1, "#2459cb");
-      ctx.fillStyle = body;
-      roundedRect(px + 10, py + 12, 16, 24, 4);
-      ctx.fill();
-
-      // tunic accent
-      ctx.fillStyle = "#2cc784";
-      ctx.fillRect(px + 14, py + 18, 8, 9);
-
-      // shield
-      ctx.fillStyle = "#2d70dc";
-      ctx.beginPath();
-      const sx = px + (this.dir > 0 ? 4 : 24);
-      ctx.moveTo(sx, py + 20);
-      ctx.lineTo(sx + 6, py + 24);
-      ctx.lineTo(sx + 4, py + 34);
-      ctx.lineTo(sx - 2, py + 24);
+      ctx.moveTo(this.x - cameraX + (this.dir > 0 ? 3 : 23), this.y + 18);
+      ctx.lineTo(this.x - cameraX + (this.dir > 0 ? 8 : 28), this.y + 22);
+      ctx.lineTo(this.x - cameraX + (this.dir > 0 ? 5 : 25), this.y + 31);
+      ctx.lineTo(this.x - cameraX + (this.dir > 0 ? 1 : 21), this.y + 22);
       ctx.closePath();
       ctx.fill();
+      // Cape
+      ctx.fillStyle = "#ff5a70";
+      ctx.fillRect(this.x - cameraX + (this.dir > 0 ? 3 : 21), this.y + 14, 6, 18);
+      // Feet
+      ctx.fillStyle = "#5f3a21";
+      ctx.fillRect(this.x - cameraX + 7, this.y + 34, 6, 8);
+      ctx.fillRect(this.x - cameraX + 17, this.y + 34, 6, 8);
 
-      // head + hair
-      ctx.fillStyle = "#ffd4ae";
-      roundedRect(px + 9, py + 1, 18, 15, 4);
-      ctx.fill();
-      ctx.fillStyle = "#6b4427";
-      ctx.fillRect(px + 9, py + 1, 18, 4);
-      ctx.fillRect(px + 9, py + 5, 3, 4);
-
-      // feet
-      ctx.fillStyle = "#5e351f";
-      ctx.fillRect(px + 10, py + 35, 6, 10);
-      ctx.fillRect(px + 20, py + 35, 6, 10);
-
-      if (this.swordBox) {
-        ctx.shadowColor = "rgba(255,255,255,.7)";
-        ctx.shadowBlur = 9;
-        const g = ctx.createLinearGradient(this.swordBox.x - camX, this.swordBox.y, this.swordBox.x - camX + this.swordBox.w, this.swordBox.y);
-        g.addColorStop(0, "rgba(255,255,255,.2)");
-        g.addColorStop(1, "rgba(180,230,255,.78)");
-        ctx.fillStyle = g;
-        roundedRect(this.swordBox.x - camX, this.swordBox.y, this.swordBox.w, this.swordBox.h, 10);
-        ctx.fill();
-        ctx.shadowBlur = 0;
+      if (this.swordRect) {
+        ctx.fillStyle = "rgba(255,255,255,0.65)";
+        ctx.fillRect(this.swordRect.x - cameraX, this.swordRect.y, this.swordRect.w, this.swordRect.h);
       }
     }
   }
 
   class Game {
     constructor() {
-      this.audio = new AudioEngine();
+      this.audio = new AudioManager();
+      this.state = "start"; // start, playing, pause, gameover, levelComplete, win
+      this.levelIndex = 0;
+      this.levels = this.createLevels();
+      this.level = null;
+      this.player = new Player(70, 300);
+      this.projectiles = [];
+      this.enemyProjectiles = [];
+      this.shockwaves = [];
+      this.particles = [];
+      this.confetti = [];
+      this.scoreCoins = 0;
+      this.cameraX = 0;
+      this.overlayTimer = 0;
+      this.shake = 0;
       this.keys = Object.create(null);
       this.just = Object.create(null);
 
-      this.state = "start"; // start, playing, pause, gameover, levelcomplete, win
-      this.levelIndex = 0;
-      this.levels = this.buildLevels();
-      this.level = null;
-
-      this.player = new Player(80, 340);
-      this.projectiles = [];
-      this.enemyProjectiles = [];
-      this.particles = [];
-      this.confetti = [];
-      this.shockwaves = [];
-
-      this.boss = null;
-      this.coinsTotal = 0;
-      this.cameraX = 0;
-      this.overlayTime = 0;
-      this.screenShake = 0;
-
-      this.bindInput();
-      this.last = performance.now();
+      this.bindKeys();
+      this.lastTime = performance.now();
       requestAnimationFrame(this.loop.bind(this));
     }
 
-    buildLevels() {
+    createLevels() {
       return [
         {
           name: "Forest",
-          theme: "forest",
-          bounds: { minX: 0, maxX: 2600 },
-          spawn: { x: 90, y: 300 },
-          exit: { x: 2460, y: 330, w: 46, h: 70 },
+          type: "forest",
+          bounds: { minX: 0, maxX: 2200 },
+          spawn: { x: 80, y: 320 },
+          exit: { x: 2070, y: 320, w: 42, h: 60 },
           platforms: [
-            { x: 0, y: 430, w: 2600, h: 110 },
-            { x: 240, y: 355, w: 170, h: 20 },
-            { x: 520, y: 315, w: 190, h: 20 },
-            { x: 840, y: 275, w: 190, h: 20 },
-            { x: 1180, y: 330, w: 210, h: 20 },
-            { x: 1510, y: 280, w: 170, h: 20 },
-            { x: 1840, y: 345, w: 220, h: 20 },
-            { x: 2120, y: 300, w: 170, h: 20 }
+            { x: 0, y: 430, w: 2200, h: 70 },
+            { x: 260, y: 350, w: 160, h: 20 },
+            { x: 560, y: 310, w: 180, h: 20 },
+            { x: 900, y: 340, w: 160, h: 20 },
+            { x: 1180, y: 280, w: 160, h: 20 },
+            { x: 1540, y: 330, w: 220, h: 20 }
           ],
           enemies: [
-            { type: "green", x: 430, y: 402, min: 260, max: 670 },
-            { type: "green", x: 1040, y: 402, min: 870, max: 1250 },
-            { type: "purple", x: 1480, y: 402, min: 1320, max: 1700 },
-            { type: "purple", x: 1980, y: 402, min: 1800, max: 2320 }
+            { type: "green", x: 440, y: 404, min: 300, max: 700 },
+            { type: "green", x: 980, y: 404, min: 880, max: 1120 },
+            { type: "purple", x: 1450, y: 404, min: 1320, max: 1740 }
           ],
           coins: [
-            { x: 278, y: 320 }, { x: 340, y: 320 }, { x: 560, y: 278 },
-            { x: 640, y: 278 }, { x: 890, y: 236 }, { x: 965, y: 236 },
-            { x: 1220, y: 292 }, { x: 1560, y: 242 }, { x: 1880, y: 308 },
-            { x: 2170, y: 262 }
+            { x: 300, y: 315 }, { x: 360, y: 315 }, { x: 620, y: 275 },
+            { x: 700, y: 275 }, { x: 960, y: 305 }, { x: 1220, y: 245 },
+            { x: 1600, y: 295 }, { x: 1680, y: 295 }
           ],
-          lava: []
+          lavaPools: []
         },
         {
           name: "Cave",
-          theme: "cave",
-          bounds: { minX: 0, maxX: 2850 },
-          spawn: { x: 100, y: 300 },
-          exit: { x: 2710, y: 330, w: 46, h: 70 },
+          type: "cave",
+          bounds: { minX: 0, maxX: 2400 },
+          spawn: { x: 90, y: 320 },
+          exit: { x: 2280, y: 320, w: 42, h: 60 },
           platforms: [
-            { x: 0, y: 430, w: 2850, h: 110 },
-            { x: 210, y: 360, w: 170, h: 20 },
-            { x: 520, y: 315, w: 170, h: 20 },
-            { x: 810, y: 270, w: 180, h: 20 },
-            { x: 1110, y: 320, w: 190, h: 20 },
-            { x: 1410, y: 275, w: 170, h: 20 },
-            { x: 1705, y: 328, w: 210, h: 20 },
-            { x: 2020, y: 288, w: 180, h: 20 },
-            { x: 2330, y: 248, w: 200, h: 20 }
+            { x: 0, y: 430, w: 2400, h: 70 },
+            { x: 240, y: 360, w: 160, h: 20 },
+            { x: 520, y: 300, w: 160, h: 20 },
+            { x: 840, y: 250, w: 170, h: 20 },
+            { x: 1180, y: 320, w: 190, h: 20 },
+            { x: 1500, y: 270, w: 170, h: 20 },
+            { x: 1840, y: 330, w: 180, h: 20 }
           ],
           enemies: [
-            { type: "green", x: 600, y: 402, min: 450, max: 760 },
-            { type: "purple", x: 980, y: 402, min: 840, max: 1230 },
-            { type: "purple", x: 1610, y: 402, min: 1410, max: 1890 },
-            { type: "purple", x: 2190, y: 402, min: 2040, max: 2480 }
+            { type: "green", x: 600, y: 404, min: 420, max: 780 },
+            { type: "purple", x: 1020, y: 404, min: 920, max: 1300 },
+            { type: "purple", x: 1680, y: 404, min: 1480, max: 1990 }
           ],
           coins: [
-            { x: 250, y: 327 }, { x: 560, y: 280 }, { x: 640, y: 280 },
-            { x: 860, y: 236 }, { x: 930, y: 236 }, { x: 1160, y: 285 },
-            { x: 1450, y: 240 }, { x: 1770, y: 292 }, { x: 2060, y: 252 },
-            { x: 2385, y: 210 }
+            { x: 280, y: 325 }, { x: 570, y: 265 }, { x: 640, y: 265 },
+            { x: 890, y: 215 }, { x: 1240, y: 285 }, { x: 1550, y: 235 },
+            { x: 1900, y: 295 }, { x: 1980, y: 295 }
           ],
-          lava: []
+          lavaPools: []
         },
         {
           name: "Volcano",
-          theme: "volcano",
-          bounds: { minX: 0, maxX: 960 },
-          spawn: { x: 120, y: 300 },
+          type: "volcano",
+          bounds: { minX: 0, maxX: 900 },
+          spawn: { x: 120, y: 320 },
           exit: null,
           platforms: [
-            { x: 0, y: 430, w: 960, h: 110 },
-            { x: 170, y: 332, w: 140, h: 18 },
-            { x: 650, y: 332, w: 140, h: 18 }
+            { x: 0, y: 430, w: 900, h: 70 },
+            { x: 180, y: 330, w: 130, h: 20 },
+            { x: 590, y: 330, w: 130, h: 20 }
           ],
           enemies: [],
-          boss: { x: 640, y: 310 },
-          coins: [{ x: 450, y: 288 }, { x: 510, y: 288 }, { x: 570, y: 288 }],
-          lava: [{ x: 320, y: 430, w: 300, h: 110 }]
+          boss: { x: 620, y: 320 },
+          coins: [{ x: 450, y: 285 }, { x: 500, y: 285 }],
+          lavaPools: [{ x: 340, y: 430, w: 220, h: 70 }]
         }
       ];
     }
 
-    bindInput() {
+    bindKeys() {
       window.addEventListener("keydown", (e) => {
-        const already = !!this.keys[e.key];
+        const wasDown = !!this.keys[e.key];
         this.keys[e.key] = true;
-        if (!already) this.just[e.key] = true;
+        if (!wasDown) this.just[e.key] = true;
 
-        if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " "].includes(e.key)) e.preventDefault();
-
-        if ((e.key === "p" || e.key === "P") && (this.state === "playing" || this.state === "pause")) {
-          this.state = this.state === "playing" ? "pause" : "playing";
+        if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) {
+          e.preventDefault();
         }
+
+        if (e.key === "p" || e.key === "P") {
+          if (this.state === "playing") this.state = "pause";
+          else if (this.state === "pause") this.state = "playing";
+        }
+
         if (e.key === "m" || e.key === "M") this.audio.toggle();
 
         if (e.key === "r" || e.key === "R") {
           if (["playing", "pause", "gameover"].includes(this.state)) {
-            this.loadLevel(this.levelIndex, true, false);
+            this.loadLevel(this.levelIndex, true);
             this.state = "playing";
           }
         }
 
-        if (this.state === "start" && e.key === "Enter") this.startGame();
+        if (e.key === "Enter" && this.state === "start") {
+          this.startGame();
+        }
       });
 
       window.addEventListener("keyup", (e) => {
@@ -827,47 +729,55 @@
 
       canvas.addEventListener("click", (e) => {
         const r = canvas.getBoundingClientRect();
-        const mx = ((e.clientX - r.left) / r.width) * W;
-        const my = ((e.clientY - r.top) / r.height) * H;
+        const mx = ((e.clientX - r.left) / r.width) * GAME_W;
+        const my = ((e.clientY - r.top) / r.height) * GAME_H;
 
         if (this.state === "start") {
-          const b = { x: W / 2 - 120, y: 345, w: 240, h: 74 };
-          if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) this.startGame();
+          const b = { x: 350, y: 270, w: 200, h: 70 };
+          if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+            this.startGame();
+          }
         }
 
         if (this.state === "gameover") {
-          const r1 = { x: W/2 - 210, y: 300, w: 180, h: 56 };
-          const r2 = { x: W/2 + 30, y: 300, w: 180, h: 56 };
-          if (mx > r1.x && mx < r1.x + r1.w && my > r1.y && my < r1.y + r1.h) {
-            this.loadLevel(this.levelIndex, true, false);
+          const restart = { x: 280, y: 280, w: 160, h: 50 };
+          const over = { x: 460, y: 280, w: 160, h: 50 };
+          if (mx >= restart.x && mx <= restart.x + restart.w && my >= restart.y && my <= restart.y + restart.h) {
+            this.loadLevel(this.levelIndex, true);
             this.state = "playing";
           }
-          if (mx > r2.x && mx < r2.x + r2.w && my > r2.y && my < r2.y + r2.h) this.startGame();
+          if (mx >= over.x && mx <= over.x + over.w && my >= over.y && my <= over.y + over.h) {
+            this.startGame();
+          }
         }
       });
     }
 
-    keyDown(key) { return !!this.keys[key]; }
-    justPressed(key) { return !!this.just[key]; }
-    clearJust() { this.just = Object.create(null); }
+    justPressed(key) {
+      return !!this.just[key];
+    }
+
+    clearJust() {
+      this.just = Object.create(null);
+    }
 
     startGame() {
-      this.coinsTotal = 0;
+      this.scoreCoins = 0;
       this.player.hearts = this.player.maxHearts;
-      this.loadLevel(0, true, true);
+      this.levelIndex = 0;
+      this.loadLevel(0, true);
       this.state = "playing";
     }
 
-    loadLevel(index, resetHearts = false, fullRestart = false) {
+    loadLevel(index, fullReset = false) {
       this.levelIndex = index;
       const src = this.levels[index];
-
       this.level = {
         ...src,
         platforms: src.platforms.map(p => ({ ...p })),
         enemies: src.enemies.map(e => new Enemy(e.type, e.x, e.y, e.min, e.max)),
         coins: src.coins.map(c => ({ ...c, taken: false })),
-        lava: src.lava.map(l => ({ ...l }))
+        lavaPools: src.lavaPools.map(l => ({ ...l }))
       };
 
       this.boss = src.boss ? new Boss(src.boss.x, src.boss.y) : null;
@@ -877,16 +787,14 @@
       this.particles.length = 0;
       this.confetti.length = 0;
       this.cameraX = 0;
-      this.overlayTime = 0;
-      this.screenShake = 0;
 
-      if (fullRestart || resetHearts) this.player.hearts = this.player.maxHearts;
-      this.player.resetPos(src.spawn.x, src.spawn.y);
+      if (fullReset) this.player.hearts = this.player.maxHearts;
+      this.player.reset(src.spawn.x, src.spawn.y);
     }
 
     spawnShockwaves(x, y) {
-      this.shockwaves.push({ x, y, w: 40, h: 10, vx: -280, life: 1.6 });
-      this.shockwaves.push({ x, y, w: 40, h: 10, vx: 280, life: 1.6 });
+      this.shockwaves.push({ x, y, vx: -240, w: 34, h: 10, life: 1.8 });
+      this.shockwaves.push({ x, y, vx: 240, w: 34, h: 10, life: 1.8 });
     }
 
     update(dt) {
@@ -894,69 +802,82 @@
 
       this.player.update(dt, this);
 
-      if (this.level.bounds.maxX > W) {
-        const target = this.player.x - W * 0.35;
-        this.cameraX = clamp(target, 0, this.level.bounds.maxX - W);
-      } else this.cameraX = 0;
+      // Camera follows Theo on side-scrolling levels.
+      if (this.level.bounds.maxX > GAME_W) {
+        const target = this.player.x - GAME_W * 0.35;
+        this.cameraX = clamp(target, 0, this.level.bounds.maxX - GAME_W);
+      } else {
+        this.cameraX = 0;
+      }
 
+      // Coins
       for (const c of this.level.coins) {
-        if (c.taken) continue;
-        const hit = { x: c.x - 8, y: c.y - 8, w: 16, h: 16 };
-        if (aabb(this.player, hit)) {
-          c.taken = true;
-          this.coinsTotal++;
-          this.audio.coin();
-          for (let i = 0; i < 12; i++) this.particles.push(new Particle(c.x, c.y, { color: "#ffd85b", glow: 10 }));
+        if (!c.taken) {
+          const coinBox = { x: c.x - 7, y: c.y - 7, w: 14, h: 14 };
+          if (aabb(this.player, coinBox)) {
+            c.taken = true;
+            this.scoreCoins += 1;
+            this.audio.coin();
+            for (let i = 0; i < 10; i++) this.particles.push(new Particle(c.x, c.y, "#ffd54f", 0.5));
+          }
         }
       }
 
-      for (const l of this.level.lava) {
+      // Lava hazard
+      for (const l of this.level.lavaPools) {
         if (aabb(this.player, l)) this.player.takeDamage(l.x + l.w / 2, this);
       }
 
-      for (const e of this.level.enemies) {
-        e.update(dt, this);
-        if (e.alive && aabb(this.player, e)) this.player.takeDamage(e.x + e.w / 2, this);
+      // Enemies
+      for (const en of this.level.enemies) {
+        en.update(dt, this.level, this.player);
+        if (en.alive && aabb(this.player, en)) this.player.takeDamage(en.x + en.w / 2, this);
       }
 
+      // Boss update/contact
       if (this.boss && this.boss.alive) {
         this.boss.update(dt, this);
         if (aabb(this.player, this.boss)) this.player.takeDamage(this.boss.x + this.boss.w / 2, this);
       }
 
+      // Projectiles (player)
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
         const p = this.projectiles[i];
         p.update(dt);
-        let remove = p.life <= 0;
 
+        let hit = false;
+        for (const plat of this.level.platforms) {
+          if (aabb(p, plat)) { hit = true; break; }
+        }
+
+        for (const en of this.level.enemies) {
+          if (!hit && en.alive && aabb(p, en)) {
+            en.hurt(this, p.damage);
+            hit = true;
+          }
+        }
+
+        if (!hit && this.boss && this.boss.alive && aabb(p, this.boss)) {
+          this.boss.hurt(this, p.damage);
+          hit = true;
+        }
+
+        if (p.life <= 0 || hit || p.x < this.level.bounds.minX - 100 || p.x > this.level.bounds.maxX + 100) {
+          this.projectiles.splice(i, 1);
+        }
+      }
+
+      // Enemy projectiles
+      for (let i = this.enemyProjectiles.length - 1; i >= 0; i--) {
+        const p = this.enemyProjectiles[i];
+        p.update(dt);
+
+        let remove = p.life <= 0;
         for (const plat of this.level.platforms) {
           if (aabb(p, plat)) remove = true;
         }
 
-        for (const e of this.level.enemies) {
-          if (!remove && e.alive && aabb(p, e)) {
-            e.hurt(this, p.damage);
-            remove = true;
-          }
-        }
-
-        if (!remove && this.boss && this.boss.alive && aabb(p, this.boss)) {
-          this.boss.hurt(this, p.damage);
-          remove = true;
-        }
-
-        if (p.x < this.level.bounds.minX - 150 || p.x > this.level.bounds.maxX + 150) remove = true;
-        if (remove) this.projectiles.splice(i, 1);
-      }
-
-      for (let i = this.enemyProjectiles.length - 1; i >= 0; i--) {
-        const p = this.enemyProjectiles[i];
-        p.update(dt);
-        let remove = p.life <= 0;
-
-        for (const plat of this.level.platforms) if (aabb(p, plat)) remove = true;
-
-        if (!remove && aabb(this.player, p)) {
+        if (!remove && aabb(p, this.player)) {
           this.player.takeDamage(p.x, this);
           remove = true;
         }
@@ -964,11 +885,16 @@
         if (remove) this.enemyProjectiles.splice(i, 1);
       }
 
-      if (this.player.swordBox) {
-        for (const e of this.level.enemies) if (e.alive && aabb(this.player.swordBox, e)) e.hurt(this, 1);
-        if (this.boss && this.boss.alive && aabb(this.player.swordBox, this.boss)) this.boss.hurt(this, 1);
+      // Sword hitbox logic
+      if (this.player.swordRect) {
+        const s = this.player.swordRect;
+        for (const en of this.level.enemies) {
+          if (en.alive && aabb(s, en)) en.hurt(this, 1);
+        }
+        if (this.boss && this.boss.alive && aabb(s, this.boss)) this.boss.hurt(this, 1);
       }
 
+      // Shockwaves
       for (let i = this.shockwaves.length - 1; i >= 0; i--) {
         const s = this.shockwaves[i];
         s.x += s.vx * dt;
@@ -977,17 +903,20 @@
         if (s.life <= 0) this.shockwaves.splice(i, 1);
       }
 
-      if (this.level.exit && aabb(this.player, this.level.exit)) {
-        this.state = "levelcomplete";
-        this.overlayTime = 1.0;
+      // Level progression
+      if (this.level.exit) {
+        if (aabb(this.player, this.level.exit)) {
+          this.state = "levelComplete";
+          this.overlayTimer = 1.0;
+        }
       }
 
-      if (this.state === "levelcomplete") {
-        this.overlayTime -= dt;
-        if (this.overlayTime <= 0) {
+      if (this.state === "levelComplete") {
+        this.overlayTimer -= dt;
+        if (this.overlayTimer <= 0) {
           const next = this.levelIndex + 1;
           if (next < this.levels.length) {
-            this.loadLevel(next, false, false);
+            this.loadLevel(next, false);
             this.state = "playing";
           }
         }
@@ -995,151 +924,101 @@
 
       if (this.boss && !this.boss.alive && this.state !== "win") {
         this.state = "win";
-        this.audio.win();
-        for (let i = 0; i < 220; i++) {
-          this.confetti.push(new Particle(rand(40, W - 40), rand(20, 200), {
-            color: `hsl(${Math.floor(rand(0,360))} 95% 62%)`,
-            life: rand(1.2, 2.2),
-            vx: rand(-170, 170),
-            vy: rand(-260, -40),
-            gravity: 420,
-            glow: 8,
-            size: rand(2, 6)
-          }));
+        this.audio.fanfare();
+        for (let i = 0; i < 180; i++) {
+          this.confetti.push(new Particle(rand(80, 820), rand(30, 240), `hsl(${Math.floor(rand(0, 360))} 90% 65%)`, 1.8, rand(-120,120), rand(-240,-20), rand(2,6)));
         }
       }
 
+      // Remove dead enemies from interactions only (draw still guarded)
+      this.level.enemies = this.level.enemies.filter(e => e.alive || e.hp <= 0 || e.alive === false);
+
       for (let i = this.particles.length - 1; i >= 0; i--) {
-        const p = this.particles[i];
-        p.update(dt);
-        if (p.life <= 0) this.particles.splice(i, 1);
+        this.particles[i].update(dt);
+        if (this.particles[i].life <= 0) this.particles.splice(i, 1);
       }
 
       for (let i = this.confetti.length - 1; i >= 0; i--) {
-        const p = this.confetti[i];
-        p.update(dt);
-        if (p.life <= 0) this.confetti.splice(i, 1);
+        this.confetti[i].update(dt);
+        if (this.confetti[i].life <= 0) this.confetti.splice(i, 1);
       }
 
-      this.screenShake = Math.max(0, this.screenShake - dt * 20);
-      if (this.player.hearts <= 0 && this.state !== "win") this.state = "gameover";
+      this.shake = Math.max(0, this.shake - dt * 18);
+
+      if (this.player.hearts <= 0 && this.state !== "win") {
+        this.state = "gameover";
+      }
     }
 
     drawBackground() {
-      const t = performance.now() * 0.00025;
+      const t = performance.now() * 0.00005;
 
-      if (this.level.theme === "forest") {
-        const sky = ctx.createLinearGradient(0, 0, 0, H);
-        sky.addColorStop(0, "#4ea3ff");
-        sky.addColorStop(0.5, "#7ec17f");
-        sky.addColorStop(1, "#28513c");
-        ctx.fillStyle = sky;
-        ctx.fillRect(0, 0, W, H);
+      if (this.level.type === "forest") {
+        const g = ctx.createLinearGradient(0, 0, 0, GAME_H);
+        g.addColorStop(0, `hsl(${110 + Math.sin(t) * 4}, 40%, 55%)`);
+        g.addColorStop(1, "#4d914b");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, GAME_W, GAME_H);
 
-        const sun = ctx.createRadialGradient(120, 90, 20, 120, 90, 190);
-        sun.addColorStop(0, "rgba(255,245,172,.95)");
-        sun.addColorStop(1, "rgba(255,245,172,0)");
-        ctx.fillStyle = sun;
-        ctx.fillRect(0, 0, W, H);
-
-        // far mountains
-        ctx.fillStyle = "rgba(41,88,93,.55)";
-        for (let i = 0; i < 8; i++) {
-          const x = i * 200 - (this.cameraX * 0.15 % 200) - 100;
+        // Trees
+        for (let i = 0; i < 10; i++) {
+          const x = (i * 220 - (this.cameraX * 0.45) % 220) - 40;
+          ctx.fillStyle = "#7a4f2a";
+          ctx.fillRect(x + 35, 280, 14, 100);
+          ctx.fillStyle = "#2f8f3e";
           ctx.beginPath();
-          ctx.moveTo(x, 300);
-          ctx.lineTo(x + 110, 180 + Math.sin(i * 2) * 20);
-          ctx.lineTo(x + 220, 300);
-          ctx.fill();
-        }
-
-        // trees layer
-        for (let i = 0; i < 15; i++) {
-          const x = i * 130 - (this.cameraX * 0.4 % 130);
-          ctx.fillStyle = "#5f3d24";
-          ctx.fillRect(x + 18, 300, 10, 120);
-          ctx.fillStyle = "#2d8e4a";
-          ctx.beginPath();
-          ctx.arc(x + 22, 280, 28, 0, Math.PI * 2);
+          ctx.arc(x + 42, 250, 28, 0, Math.PI * 2);
           ctx.fill();
           ctx.beginPath();
-          ctx.arc(x + 8, 295, 20, 0, Math.PI * 2);
+          ctx.arc(x + 22, 265, 22, 0, Math.PI * 2);
           ctx.fill();
           ctx.beginPath();
-          ctx.arc(x + 37, 295, 20, 0, Math.PI * 2);
+          ctx.arc(x + 62, 267, 21, 0, Math.PI * 2);
           ctx.fill();
         }
       }
 
-      if (this.level.theme === "cave") {
-        const sky = ctx.createLinearGradient(0, 0, 0, H);
-        sky.addColorStop(0, "#2f3959");
-        sky.addColorStop(1, "#141b2e");
-        ctx.fillStyle = sky;
-        ctx.fillRect(0, 0, W, H);
+      if (this.level.type === "cave") {
+        const g = ctx.createLinearGradient(0, 0, 0, GAME_H);
+        g.addColorStop(0, "#303650");
+        g.addColorStop(1, "#171a2d");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, GAME_W, GAME_H);
 
-        const mist = ctx.createRadialGradient(W/2, 220, 40, W/2, 220, 300);
-        mist.addColorStop(0, "rgba(157,187,255,.18)");
-        mist.addColorStop(1, "rgba(157,187,255,0)");
-        ctx.fillStyle = mist;
-        ctx.fillRect(0, 0, W, H);
-
-        // stalactites
-        ctx.fillStyle = "#4d5671";
-        for (let i = 0; i < 24; i++) {
-          const x = i * 60 - (this.cameraX * 0.25 % 60);
-          const len = 20 + (i * 17 % 40);
+        // Stalactites + rocks
+        ctx.fillStyle = "#4a4f66";
+        for (let i = 0; i < 16; i++) {
+          const x = i * 70 - ((this.cameraX * 0.3) % 70);
           ctx.beginPath();
           ctx.moveTo(x, 0);
-          ctx.lineTo(x + 15, len);
-          ctx.lineTo(x + 30, 0);
+          ctx.lineTo(x + 18, rand(20, 55));
+          ctx.lineTo(x + 36, 0);
           ctx.fill();
         }
 
-        // rocks
-        ctx.fillStyle = "#333b50";
-        for (let i = 0; i < 10; i++) {
-          const x = i * 120 - (this.cameraX * 0.35 % 120);
+        ctx.fillStyle = "#3d425a";
+        for (let i = 0; i < 12; i++) {
+          const x = i * 90 - ((this.cameraX * 0.2) % 90);
           ctx.beginPath();
           ctx.moveTo(x, 430);
-          ctx.lineTo(x + 35, 385);
-          ctx.lineTo(x + 75, 430);
+          ctx.lineTo(x + 25, 390);
+          ctx.lineTo(x + 50, 430);
           ctx.fill();
         }
       }
 
-      if (this.level.theme === "volcano") {
-        const sky = ctx.createLinearGradient(0, 0, 0, H);
-        sky.addColorStop(0, "#6f2a1f");
-        sky.addColorStop(0.6, "#2a1220");
-        sky.addColorStop(1, "#110912");
-        ctx.fillStyle = sky;
-        ctx.fillRect(0, 0, W, H);
+      if (this.level.type === "volcano") {
+        const g = ctx.createLinearGradient(0, 0, 0, GAME_H);
+        g.addColorStop(0, `hsl(${15 + Math.sin(t * 2) * 8}, 90%, 60%)`);
+        g.addColorStop(1, "#611b14");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, GAME_W, GAME_H);
 
-        const glow = ctx.createRadialGradient(470, 60, 30, 470, 60, 330);
-        glow.addColorStop(0, "rgba(255,145,71,.55)");
-        glow.addColorStop(1, "rgba(255,145,71,0)");
-        ctx.fillStyle = glow;
-        ctx.fillRect(0, 0, W, H);
-
-        // lightning-ish cracks
-        ctx.strokeStyle = "rgba(184,130,255,.45)";
-        ctx.lineWidth = 2;
-        for (let i = 0; i < 4; i++) {
-          ctx.beginPath();
-          const ox = 700 + i * 45;
-          ctx.moveTo(ox, 40);
-          ctx.lineTo(ox + 12, 70);
-          ctx.lineTo(ox - 6, 95);
-          ctx.lineTo(ox + 8, 120);
-          ctx.stroke();
-        }
-
-        // smoke wisps
+        // Smoke particles
         for (let i = 0; i < 16; i++) {
-          const x = (i * 68 + Math.sin(t * 12 + i) * 20) % W;
-          const y = 110 + Math.sin(t * 20 + i * 1.4) * 18;
-          ctx.fillStyle = "rgba(100,98,112,.27)";
+          const x = (i * 70 + Math.sin(t * 80 + i) * 10) % GAME_W;
+          const y = 120 + Math.sin(t * 120 + i * 2) * 20;
+          ctx.fillStyle = "rgba(80,80,80,0.24)";
           ctx.beginPath();
           ctx.arc(x, y, 16, 0, Math.PI * 2);
           ctx.fill();
@@ -1150,314 +1029,188 @@
     drawWorld() {
       this.drawBackground();
 
-      const sx = this.screenShake > 0 ? rand(-this.screenShake, this.screenShake) : 0;
-      const sy = this.screenShake > 0 ? rand(-this.screenShake * 0.55, this.screenShake * 0.55) : 0;
-
+      const sx = this.shake > 0 ? rand(-this.shake, this.shake) : 0;
+      const sy = this.shake > 0 ? rand(-this.shake * 0.5, this.shake * 0.5) : 0;
       ctx.save();
       ctx.translate(sx, sy);
 
-      // level geometry
+      // Platforms and ground
       for (const p of this.level.platforms) {
-        if (this.level.theme === "forest") {
-          const g = ctx.createLinearGradient(p.x - this.cameraX, p.y, p.x - this.cameraX, p.y + p.h);
-          g.addColorStop(0, p.y >= 430 ? "#7f5d38" : "#96816d");
-          g.addColorStop(1, p.y >= 430 ? "#4d3926" : "#655143");
-          ctx.fillStyle = g;
-        } else if (this.level.theme === "cave") {
-          const g = ctx.createLinearGradient(p.x - this.cameraX, p.y, p.x - this.cameraX, p.y + p.h);
-          g.addColorStop(0, p.y >= 430 ? "#4a536c" : "#64708f");
-          g.addColorStop(1, p.y >= 430 ? "#2e3448" : "#444d66");
-          ctx.fillStyle = g;
-        } else {
-          const g = ctx.createLinearGradient(p.x - this.cameraX, p.y, p.x - this.cameraX, p.y + p.h);
-          g.addColorStop(0, p.y >= 430 ? "#704132" : "#9b5f45");
-          g.addColorStop(1, p.y >= 430 ? "#3f221c" : "#63392d");
-          ctx.fillStyle = g;
-        }
-        roundedRect(p.x - this.cameraX, p.y, p.w, p.h, 7);
-        ctx.fill();
+        if (this.level.type === "forest") ctx.fillStyle = p.y >= 420 ? "#6e4f31" : "#7f613e";
+        if (this.level.type === "cave") ctx.fillStyle = p.y >= 420 ? "#3e4359" : "#555b76";
+        if (this.level.type === "volcano") ctx.fillStyle = p.y >= 420 ? "#4a2d24" : "#6d4437";
+        ctx.fillRect(p.x - this.cameraX, p.y, p.w, p.h);
 
-        ctx.fillStyle = "rgba(255,255,255,.09)";
-        ctx.fillRect(p.x - this.cameraX + 2, p.y + 2, p.w - 4, 3);
+        ctx.fillStyle = "rgba(255,255,255,.08)";
+        ctx.fillRect(p.x - this.cameraX, p.y, p.w, 4);
       }
 
-      // exit
+      // Exit portal
       if (this.level.exit) {
         const e = this.level.exit;
-        const pulse = 0.5 + Math.sin(performance.now() * 0.006) * 0.5;
-        ctx.shadowColor = "rgba(104,227,255,.8)";
-        ctx.shadowBlur = 20 * pulse + 8;
-        const g = ctx.createLinearGradient(e.x - this.cameraX, e.y, e.x - this.cameraX, e.y + e.h);
-        g.addColorStop(0, "#8de8ff");
-        g.addColorStop(1, "#3a8dcb");
-        ctx.fillStyle = g;
-        roundedRect(e.x - this.cameraX, e.y, e.w, e.h, 8);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = "#0d2f52";
-        roundedRect(e.x + 8 - this.cameraX, e.y + 10, e.w - 16, e.h - 20, 4);
-        ctx.fill();
+        ctx.fillStyle = "#90ddff";
+        ctx.fillRect(e.x - this.cameraX, e.y, e.w, e.h);
+        ctx.fillStyle = "#1d4f6f";
+        ctx.fillRect(e.x + 8 - this.cameraX, e.y + 10, e.w - 16, e.h - 20);
       }
 
-      // lava
-      for (const l of this.level.lava) {
-        const g = ctx.createLinearGradient(l.x - this.cameraX, l.y, l.x - this.cameraX, l.y + l.h);
-        g.addColorStop(0, "#ff713f");
-        g.addColorStop(1, "#8d1f0f");
-        ctx.fillStyle = g;
+      // Lava pools
+      for (const l of this.level.lavaPools) {
+        ctx.fillStyle = "#ff4a2d";
         ctx.fillRect(l.x - this.cameraX, l.y, l.w, l.h);
-
-        for (let i = 0; i < 14; i++) {
-          ctx.fillStyle = "rgba(255,207,93,.75)";
-          const bx = l.x - this.cameraX + i * (l.w / 14) + Math.sin(performance.now() * 0.008 + i) * 4;
-          const by = l.y + 6 + Math.sin(performance.now() * 0.016 + i) * 3;
+        for (let i = 0; i < 8; i++) {
+          ctx.fillStyle = "rgba(255,190,80,0.7)";
           ctx.beginPath();
-          ctx.arc(bx, by, 3, 0, Math.PI * 2);
+          ctx.arc(l.x - this.cameraX + i * (l.w / 8) + Math.sin(performance.now() * 0.004 + i) * 3, l.y + 5 + Math.sin(performance.now() * 0.01 + i) * 2, 3, 0, Math.PI * 2);
           ctx.fill();
         }
       }
 
-      // coins
+      // Coins
       for (const c of this.level.coins) {
         if (c.taken) continue;
-        const pulse = 1 + Math.sin(performance.now() * 0.01 + c.x * 0.2) * 0.2;
-        ctx.shadowColor = "rgba(255,214,98,.75)";
-        ctx.shadowBlur = 13;
-        const g = ctx.createRadialGradient(c.x - this.cameraX - 2, c.y - 3, 1, c.x - this.cameraX, c.y, 9);
-        g.addColorStop(0, "#fff2c5");
-        g.addColorStop(1, "#f2b52f");
-        ctx.fillStyle = g;
+        const pulse = 1 + Math.sin(performance.now() * 0.01 + c.x) * 0.2;
+        ctx.fillStyle = "#ffd84d";
         ctx.beginPath();
-        ctx.arc(c.x - this.cameraX, c.y, 6.2 * pulse, 0, Math.PI * 2);
+        ctx.arc(c.x - this.cameraX, c.y, 6 * pulse, 0, Math.PI * 2);
         ctx.fill();
-        ctx.shadowBlur = 0;
+        ctx.fillStyle = "rgba(255,255,255,0.8)";
+        ctx.fillRect(c.x - this.cameraX - 1, c.y - 5, 2, 10);
       }
 
-      for (const p of this.projectiles) p.draw(this.cameraX);
-      for (const p of this.enemyProjectiles) p.draw(this.cameraX);
+      for (const p of this.projectiles) p.draw(ctx, this.cameraX);
+      for (const p of this.enemyProjectiles) p.draw(ctx, this.cameraX);
 
       for (const s of this.shockwaves) {
-        ctx.fillStyle = "#ffd39b";
+        ctx.fillStyle = "#ffd399";
         ctx.fillRect(s.x - this.cameraX, s.y, s.w, s.h);
       }
 
-      for (const e of this.level.enemies) e.draw(this.cameraX);
-      if (this.boss) this.boss.draw(this.cameraX);
-      this.player.draw(this.cameraX);
+      for (const en of this.level.enemies) en.draw(ctx, this.cameraX);
+      if (this.boss) this.boss.draw(ctx, this.cameraX);
+      this.player.draw(ctx, this.cameraX);
 
-      for (const p of this.particles) p.draw(this.cameraX);
-      for (const p of this.confetti) p.draw(0);
+      for (const p of this.particles) p.draw(ctx, this.cameraX);
+      for (const c of this.confetti) c.draw(ctx, 0);
 
       ctx.restore();
     }
 
     drawHUD() {
-      // panel
-      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--panel");
-      roundedRect(12, 12, 340, 100, 11);
-      ctx.fill();
-      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--panel-border");
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 18px Trebuchet MS";
-      ctx.fillText(`Level: ${this.level.name}`, 24, 36);
-      ctx.fillText(`Coins: ${this.coinsTotal}`, 24, 60);
-
-      for (let i = 0; i < this.player.maxHearts; i++) {
-        const x = 25 + i * 32;
-        const y = 82;
-        const filled = i < this.player.hearts;
-        ctx.fillStyle = filled ? "#ff5f72" : "#663a47";
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.bezierCurveTo(x - 8, y - 9, x - 18, y + 6, x, y + 18);
-        ctx.bezierCurveTo(x + 18, y + 6, x + 8, y - 9, x, y);
-        ctx.fill();
-      }
-
-      ctx.fillStyle = "rgba(236,245,255,.95)";
-      ctx.font = "12px Trebuchet MS";
-      ctx.fillText("P pause • R restart • M sound", 24, 104);
-
-      if (this.boss && this.boss.alive) {
-        roundedRect(570, 14, 378, 30, 8);
-        ctx.fillStyle = "rgba(35,12,30,.6)";
-        ctx.fill();
-        const hpRatio = clamp(this.boss.hp / this.boss.maxHp, 0, 1);
-        const g = ctx.createLinearGradient(576, 18, 930, 18);
-        g.addColorStop(0, "#ff7dd8");
-        g.addColorStop(1, "#ff3ba6");
-        ctx.fillStyle = g;
-        roundedRect(576, 18, 366 * hpRatio, 22, 6);
-        ctx.fill();
-        ctx.fillStyle = "#fff";
-        ctx.font = "bold 14px Trebuchet MS";
-        ctx.fillText("King Goober", 582, 34);
-      }
-    }
-
-    drawStartScene() {
-      // Cinematic opening card inspired by fantasy key-art style.
-      const sky = ctx.createLinearGradient(0, 0, 0, H);
-      sky.addColorStop(0, "#3354a3");
-      sky.addColorStop(0.45, "#3a266f");
-      sky.addColorStop(1, "#161428");
-      ctx.fillStyle = sky;
-      ctx.fillRect(0, 0, W, H);
-
-      const dawn = ctx.createRadialGradient(170, 150, 40, 170, 150, 260);
-      dawn.addColorStop(0, "rgba(255,214,118,.95)");
-      dawn.addColorStop(1, "rgba(255,214,118,0)");
-      ctx.fillStyle = dawn;
-      ctx.fillRect(0, 0, W, H);
-
-      const storm = ctx.createRadialGradient(810, 120, 20, 810, 120, 280);
-      storm.addColorStop(0, "rgba(166,103,255,.45)");
-      storm.addColorStop(1, "rgba(166,103,255,0)");
-      ctx.fillStyle = storm;
-      ctx.fillRect(0, 0, W, H);
-
-      // logo plaque
-      const px = 140, py = 42, pw = 680, ph = 245;
-      const panel = ctx.createLinearGradient(px, py, px, py + ph);
-      panel.addColorStop(0, "rgba(31,47,96,.94)");
-      panel.addColorStop(1, "rgba(18,24,49,.95)");
-      ctx.fillStyle = panel;
-      roundedRect(px, py, pw, ph, 16);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(252,206,98,.9)";
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      // sword behind text
-      ctx.strokeStyle = "#8fe9ff";
-      ctx.lineWidth = 9;
-      ctx.beginPath();
-      ctx.moveTo(W/2, 58);
-      ctx.lineTo(W/2, 268);
-      ctx.stroke();
-      ctx.fillStyle = "#f8ce65";
-      ctx.fillRect(W/2 - 48, 84, 96, 14);
-
-      ctx.textAlign = "center";
-      ctx.lineWidth = 9;
-      ctx.strokeStyle = "#5f2800";
-      ctx.fillStyle = "#ff7e2f";
-      ctx.font = "bold 84px Georgia, serif";
-      ctx.strokeText("THEO'S", W/2, 148);
-      ctx.fillText("THEO'S", W/2, 148);
-
-      ctx.fillStyle = "#f7cb4f";
-      ctx.strokeStyle = "#5e3b04";
-      ctx.font = "bold 78px Georgia, serif";
-      ctx.strokeText("HERO QUEST", W/2, 233);
-      ctx.fillText("HERO QUEST", W/2, 233);
-
-      ctx.fillStyle = "#2f73cc";
-      roundedRect(W/2 - 95, 160, 190, 38, 6);
-      ctx.fill();
-      ctx.fillStyle = "#ffe48f";
-      ctx.font = "bold 32px Georgia, serif";
-      ctx.fillText("TINY", W/2, 190);
-
-      // hero + slime mascots
-      ctx.shadowColor = "rgba(92,255,107,.75)";
-      ctx.shadowBlur = 18;
-      ctx.fillStyle = "#52f24a";
-      ctx.beginPath();
-      ctx.ellipse(840, 286, 55, 43, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = "#112419";
-      ctx.fillRect(820, 277, 8, 8);
-      ctx.fillRect(850, 277, 8, 8);
-      ctx.fillRect(829, 294, 24, 7);
-
-      ctx.fillStyle = "#2b67c6";
-      ctx.fillRect(W/2 - 12, 290, 24, 24);
-      ctx.fillStyle = "#d9435f";
-      ctx.fillRect(W/2 - 20, 294, 8, 18);
-      ctx.fillStyle = "#ffd4ae";
-      ctx.fillRect(W/2 - 10, 276, 20, 15);
-
-      // Play button
-      const bx = W/2 - 120, by = 345, bw = 240, bh = 74;
-      const pulse = 0.82 + Math.sin(performance.now() * 0.005) * 0.18;
-      ctx.shadowColor = "rgba(105,211,255,.7)";
-      ctx.shadowBlur = 22 * pulse;
-      const bg = ctx.createLinearGradient(bx, by, bx, by + bh);
-      bg.addColorStop(0, "#49b7ff");
-      bg.addColorStop(1, "#2f68d5");
-      ctx.fillStyle = bg;
-      roundedRect(bx, by, bw, bh, 12);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = "rgba(255,255,255,.55)";
-      ctx.stroke();
+      // HUD panel
+      ctx.fillStyle = "rgba(14,20,33,0.65)";
+      ctx.fillRect(12, 12, 310, 88);
+      ctx.strokeStyle = "rgba(255,255,255,0.22)";
+      ctx.strokeRect(12, 12, 310, 88);
 
       ctx.fillStyle = "#fff";
-      ctx.font = "bold 40px Trebuchet MS";
-      ctx.fillText("PLAY", W/2, by + 49);
+      ctx.font = "bold 17px Trebuchet MS";
+      ctx.fillText(`Level: ${this.level.name}`, 24, 35);
+      ctx.fillText(`Coins: ${this.scoreCoins}`, 24, 58);
 
-      ctx.fillStyle = "#e8f3ff";
-      ctx.font = "18px Trebuchet MS";
-      ctx.fillText("A tiny hero can do BIG things!", W/2, 445);
-      ctx.font = "15px Trebuchet MS";
-      ctx.fillText("Press Enter or click PLAY to begin", W/2, 472);
-      ctx.fillText("Move: Arrows/A,D • Jump: Space/W • Z sword • X arrow • C bullet", W/2, 494);
-      ctx.textAlign = "left";
+      // Hearts (simple heart shapes)
+      for (let i = 0; i < this.player.maxHearts; i++) {
+        const x = 24 + i * 28;
+        const y = 75;
+        const filled = i < this.player.hearts;
+        ctx.fillStyle = filled ? "#ff5e6a" : "#6c3d43";
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.bezierCurveTo(x - 7, y - 8, x - 18, y + 5, x, y + 17);
+        ctx.bezierCurveTo(x + 18, y + 5, x + 7, y - 8, x, y);
+        ctx.fill();
+      }
+
+      if (this.boss && this.boss.alive) {
+        ctx.fillStyle = "rgba(20,0,10,0.55)";
+        ctx.fillRect(540, 14, 340, 24);
+        ctx.fillStyle = "#ff7dd3";
+        const hpRatio = clamp(this.boss.hp / this.boss.maxHp, 0, 1);
+        ctx.fillRect(544, 18, 332 * hpRatio, 16);
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 14px Trebuchet MS";
+        ctx.fillText("King Goober", 548, 30);
+      }
+
+      ctx.fillStyle = "rgba(255,255,255,.9)";
+      ctx.font = "12px Trebuchet MS";
+      ctx.fillText("P pause  •  R restart level  •  M sound", 24, 96);
     }
 
     drawOverlay() {
-      const center = (title, sub = "", color = "#fff") => {
-        ctx.fillStyle = "rgba(6,9,17,.58)";
-        ctx.fillRect(0, 0, W, H);
+      const centerText = (title, subtitle = "", color = "#fff") => {
+        ctx.fillStyle = "rgba(0,0,0,0.55)";
+        ctx.fillRect(0, 0, GAME_W, GAME_H);
         ctx.fillStyle = color;
         ctx.textAlign = "center";
-        ctx.font = "bold 64px Trebuchet MS";
-        ctx.fillText(title, W / 2, 220);
-        if (sub) {
-          ctx.fillStyle = "#ebf4ff";
-          ctx.font = "26px Trebuchet MS";
-          ctx.fillText(sub, W / 2, 272);
+        ctx.font = "bold 54px Trebuchet MS";
+        ctx.fillText(title, GAME_W / 2, 210);
+        if (subtitle) {
+          ctx.fillStyle = "#f2f6ff";
+          ctx.font = "24px Trebuchet MS";
+          ctx.fillText(subtitle, GAME_W / 2, 260);
         }
         ctx.textAlign = "left";
       };
 
       if (this.state === "start") {
-        this.drawStartScene();
-        return;
+        this.drawBackgroundStart();
+        centerText("Theo's Tiny Hero Quest", "A tiny hero can do BIG things!", "#ffd95a");
+
+        ctx.fillStyle = "#2f9cff";
+        ctx.fillRect(350, 270, 200, 70);
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 34px Trebuchet MS";
+        ctx.textAlign = "center";
+        ctx.fillText("PLAY", 450, 315);
+
+        ctx.font = "16px Trebuchet MS";
+        ctx.fillText("Move: Arrow keys/A,D | Jump: Space/W/Up | Z Sword | X Arrow | C Bullet", 450, 370);
+        ctx.fillText("Press Enter or click PLAY to begin!", 450, 395);
+        ctx.textAlign = "left";
       }
 
-      if (this.state === "pause") center("Paused", "Press P to continue", "#95e8ff");
+      if (this.state === "pause") {
+        centerText("Paused", "Press P to continue", "#7be0ff");
+      }
 
       if (this.state === "gameover") {
-        center("Game Over", "Theo will be back!", "#ff9696");
+        centerText("Game Over", "Theo will be back!", "#ff8a8a");
 
         const drawBtn = (x, y, w, h, txt) => {
-          const g = ctx.createLinearGradient(x, y, x, y + h);
-          g.addColorStop(0, "#4eb3ff");
-          g.addColorStop(1, "#2f67d4");
-          ctx.fillStyle = g;
-          roundedRect(x, y, w, h, 10);
-          ctx.fill();
-          ctx.strokeStyle = "rgba(255,255,255,.55)";
-          ctx.stroke();
+          ctx.fillStyle = "#2d75dd";
+          ctx.fillRect(x, y, w, h);
           ctx.fillStyle = "#fff";
+          ctx.font = "bold 18px Trebuchet MS";
           ctx.textAlign = "center";
-          ctx.font = "bold 20px Trebuchet MS";
-          ctx.fillText(txt, x + w/2, y + 35);
+          ctx.fillText(txt, x + w / 2, y + 31);
           ctx.textAlign = "left";
         };
 
-        drawBtn(W/2 - 210, 300, 180, 56, "Restart Level");
-        drawBtn(W/2 + 30, 300, 180, 56, "Start Over");
+        drawBtn(280, 280, 160, 50, "Restart Level");
+        drawBtn(460, 280, 160, 50, "Start Over");
       }
 
-      if (this.state === "levelcomplete") center("Level Complete!", "Great job, Theo!", "#97ffad");
-      if (this.state === "win") center("YOU WIN!", "Yay! You killed the evil boss. Now you saved the world!", "#ffe57d");
+      if (this.state === "levelComplete") {
+        centerText("Level Complete!", "Great job, Theo!", "#8dff93");
+      }
+
+      if (this.state === "win") {
+        centerText("YOU WIN!", "Yay! You killed the evil boss. Now you saved the world!", "#ffe57a");
+      }
+    }
+
+    drawBackgroundStart() {
+      const g = ctx.createLinearGradient(0, 0, 0, GAME_H);
+      g.addColorStop(0, "#4867aa");
+      g.addColorStop(1, "#1c294a");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, GAME_W, GAME_H);
+
+      for (let i = 0; i < 35; i++) {
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        ctx.fillRect((i * 49 + (performance.now() * 0.03)) % GAME_W, 30 + (i * 13) % 180, 2, 2);
+      }
     }
 
     draw() {
@@ -1469,12 +1222,14 @@
       this.drawWorld();
       this.drawHUD();
 
-      if (["pause", "gameover", "levelcomplete", "win"].includes(this.state)) this.drawOverlay();
+      if (["pause", "gameover", "levelComplete", "win"].includes(this.state)) {
+        this.drawOverlay();
+      }
     }
 
     loop(now) {
-      const dt = Math.min((now - this.last) / 1000, 0.033);
-      this.last = now;
+      const dt = Math.min((now - this.lastTime) / 1000, 0.033);
+      this.lastTime = now;
 
       this.update(dt);
       this.draw();
@@ -1484,6 +1239,7 @@
     }
   }
 
+  // Start game engine.
   new Game();
 })();
 </script>
